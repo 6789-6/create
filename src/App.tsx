@@ -1,3 +1,3 @@
-import { OrbitApp } from './orbit';
+import { RomanceOrbitApp } from './roseTheater';
 
-export default OrbitApp;
+export default RomanceOrbitApp;
