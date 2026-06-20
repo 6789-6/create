@@ -1,3 +1,3 @@
-import { RomanceOrbitApp } from './roseAtelier';
+import { RomanceOrbitApp } from './velvetRose';
 
 export default RomanceOrbitApp;
