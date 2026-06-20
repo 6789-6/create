@@ -1,5 +1,5 @@
-import { CSSProperties, createElement, useMemo, useState } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { CSSProperties, createElement, useMemo, useRef, useState } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { Html, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { themeItems } from './themeData';
@@ -16,7 +16,7 @@ const pointVertex = `
     vColor = color;
     vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
     float perspective = 300.0 / max(1.0, -mvPosition.z);
-    gl_PointSize = clamp(size * perspective, 1.0, 16.0);
+    gl_PointSize = clamp(size * perspective, 1.0, 18.0);
     gl_Position = projectionMatrix * mvPosition;
   }
 `;
@@ -27,12 +27,50 @@ const pointFragment = `
     vec2 p = gl_PointCoord - vec2(0.5);
     float d = length(p);
     float core = smoothstep(0.5, 0.0, d);
-    float halo = smoothstep(0.5, 0.16, d) * 0.42;
-    float alpha = core * 0.92 + halo;
+    float halo = smoothstep(0.5, 0.13, d) * 0.5;
+    float alpha = core * 0.94 + halo;
     if (alpha < 0.025) discard;
     gl_FragColor = vec4(vColor, alpha);
   }
 `;
+
+const romanceDetails: Record<string, { kicker: string; title: string; story: string; promise: string; moments: string[] }> = {
+  first: {
+    kicker: 'SCENE 01 · 星光初见',
+    title: '一束光先替我靠近你',
+    story: '点亮后，中心会展开一条微小的彗星轨迹，像第一次在人群里看见你，世界还很吵，但光只往一个方向偏移。',
+    promise: '仪式：初见星束会在主星旁形成短暂心跳轨迹。',
+    moments: ['视线落点', '心跳延迟', '第一束星光']
+  },
+  rose: {
+    kicker: 'SCENE 02 · 玫瑰星云',
+    title: '不是一朵花，是一片夜空盛开',
+    story: '玫瑰节点会打开五瓣粉色星尘，花瓣不是贴图，而是一圈圈发光粒子，在你旋转时呈现不同层次。',
+    promise: '仪式：玫瑰花瓣轨道围绕节点展开。',
+    moments: ['粉色星尘', '花瓣轨道', '柔光核心']
+  },
+  moon: {
+    kicker: 'SCENE 03 · 月光来信',
+    title: '月亮把没说出口的话写成金色轨道',
+    story: '月光节点会生成一组漂浮信笺线，像夜里被折起来的信，绕着星体慢慢显出温柔的金色。',
+    promise: '仪式：金色信笺线从节点附近展开。',
+    moments: ['金色轨道', '未寄出的信', '月下回声']
+  },
+  aurora: {
+    kicker: 'SCENE 04 · 极光慢舞',
+    title: '安静也可以有颜色',
+    story: '极光节点会拉出青绿色波纹光带，像一场不用说话的慢舞，旋转时会看到它在空间里有真实厚度。',
+    promise: '仪式：极光波纹在节点周围垂落。',
+    moments: ['青绿色光带', '慢舞波纹', '夜空呼吸']
+  },
+  future: {
+    kicker: 'SCENE 05 · 未来光环',
+    title: '把愿望折成一圈一圈靠近的轨道',
+    story: '未来节点会出现多层戒环与小星门，像把“以后”变成可旋转、可抵达的地方。',
+    promise: '仪式：未来戒环围绕节点形成。',
+    moments: ['远环', '愿望星门', '一起抵达']
+  }
+};
 
 function seeded(seed: number) {
   let t = seed + 0x6d2b79f5;
@@ -174,6 +212,99 @@ function CoreGlow() {
   );
 }
 
+function MemoryRitual({ active }: { active: OrbitNode }) {
+  const groupRef = useRef<THREE.Group>(null);
+  const geometry = useMemo(() => {
+    const rand = seeded(active.id.split('').reduce((a, c) => a + c.charCodeAt(0), 17));
+    const count = active.id === 'rose' ? 950 : active.id === 'aurora' ? 820 : 680;
+    const positions = new Float32Array(count * 3);
+    const colors = new Float32Array(count * 3);
+    const sizes = new Float32Array(count);
+    const base = new THREE.Color(active.color);
+    const white = new THREE.Color('#fff7fb');
+    const cyan = new THREE.Color('#90fff0');
+    const gold = new THREE.Color('#fff0b8');
+
+    for (let i = 0; i < count; i++) {
+      const u = (i / count) * Math.PI * 2;
+      const layer = Math.pow(rand(), 0.55);
+      const ring = 0.2 + layer * 0.82;
+      let x = 0;
+      let y = 0;
+      let z = 0;
+
+      if (active.id === 'rose') {
+        const petal = 1 + 0.32 * Math.sin(5 * u);
+        x = Math.cos(u) * ring * petal;
+        y = Math.sin(u) * ring * 0.62 * petal;
+        z = (rand() - 0.5) * 0.48 + Math.sin(u * 3) * 0.08;
+      } else if (active.id === 'moon') {
+        const row = (i % 24) / 24;
+        x = (row - 0.5) * 1.18 + Math.sin(u * 2) * 0.06;
+        y = (Math.floor(i / 24) % 28 - 14) * 0.025 + Math.sin(u) * 0.16;
+        z = (rand() - 0.5) * 0.38 + Math.cos(u * 1.7) * 0.16;
+      } else if (active.id === 'aurora') {
+        x = (rand() - 0.5) * 1.55;
+        y = Math.sin(x * 4.2 + u * 1.2) * 0.34 + (rand() - 0.5) * 0.18;
+        z = Math.cos(x * 3.4 + u) * 0.34 + (rand() - 0.5) * 0.46;
+      } else if (active.id === 'future') {
+        const tilt = i % 3;
+        x = Math.cos(u) * (0.36 + layer * 0.72);
+        y = Math.sin(u) * (0.18 + tilt * 0.12 + layer * 0.22);
+        z = Math.sin(u + tilt) * 0.42 + (rand() - 0.5) * 0.18;
+      } else {
+        const comet = Math.pow(i / count, 0.74);
+        x = -0.58 + comet * 1.2 + (rand() - 0.5) * 0.18;
+        y = Math.sin(comet * Math.PI * 2.0) * 0.24 + (rand() - 0.5) * 0.16;
+        z = (rand() - 0.5) * (0.55 - comet * 0.22);
+      }
+
+      positions[i * 3] = x;
+      positions[i * 3 + 1] = y;
+      positions[i * 3 + 2] = z;
+
+      const c = base.clone();
+      if (active.id === 'aurora') c.lerp(cyan, 0.45 + rand() * 0.35);
+      if (active.id === 'moon' || active.id === 'future') c.lerp(gold, 0.38 + rand() * 0.32);
+      c.lerp(white, rand() * 0.28);
+      colors[i * 3] = c.r;
+      colors[i * 3 + 1] = c.g;
+      colors[i * 3 + 2] = c.b;
+      sizes[i] = 0.018 + Math.pow(rand(), 2.0) * 0.07;
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geo.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+    return geo;
+  }, [active.id, active.color]);
+
+  useFrame(({ clock }) => {
+    const g = groupRef.current;
+    if (!g) return;
+    const t = clock.getElapsedTime();
+    g.rotation.z = Math.sin(t * 0.24) * 0.08;
+    g.rotation.y = t * 0.055;
+    const s = 1 + Math.sin(t * 1.1) * 0.025;
+    g.scale.setScalar(s);
+  });
+
+  return three('group', { ref: groupRef, position: active.pos },
+    h(Ribbon, { rx: 0.88, ry: 0.46, color: active.color, opacity: 0.42, rot: [0.35, 0.2, 0.12] }),
+    h(Ribbon, { rx: 0.56, ry: 0.9, color: active.id === 'moon' ? '#fff0b8' : '#91fff0', opacity: 0.18, rot: [-0.65, 0.15, -0.4] }),
+    three('points', { geometry },
+      three('shaderMaterial', {
+        vertexShader: pointVertex,
+        fragmentShader: pointFragment,
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+      })
+    )
+  );
+}
+
 function NodeMesh({ node, active, select }: { node: OrbitNode; active: boolean; select: (node: OrbitNode) => void }) {
   return three('group', { position: node.pos },
     three('mesh', { onClick: (event: any) => { event.stopPropagation(); select(node); } },
@@ -202,6 +333,7 @@ function Scene({ nodes, active, select }: { nodes: OrbitNode[]; active: OrbitNod
       h(Ribbon, { rx: 3.42, ry: 2.22, color: '#91fff0', opacity: 0.16, rot: [-0.58, 0.04, -0.13] }),
       h(Ribbon, { rx: 2.3, ry: 1.42, color: '#fff0b8', opacity: 0.16, rot: [0.82, 0.14, 0.4] }),
       h(Ribbon, { rx: 3.9, ry: 2.58, color: '#c8a7ff', opacity: 0.09, rot: [0.25, 0.34, -0.36] }),
+      h(MemoryRitual, { active, key: active.id }),
       ...nodes.map((node) => h(NodeMesh, { key: node.id, node, active: active.id === node.id, select }))
     ),
     h(OrbitControls, { enablePan: false, enableDamping: true, dampingFactor: 0.07, rotateSpeed: 0.58, minDistance: 3.8, maxDistance: 9.5 })
@@ -213,6 +345,7 @@ export function RomanceOrbitApp() {
   const [active, setActive] = useState(nodes[0]);
   const [query, setQuery] = useState('');
   const list = (query ? nodes.filter((n) => `${n.title}${n.subtitle}${n.note}`.includes(query)) : nodes).slice(0, 5);
+  const detail = romanceDetails[active.id] ?? romanceDetails.first;
 
   return h('main', { className: 'romance-shell', style: { '--accent': active.color } as CSSProperties },
     h(Scene, { nodes, active, select: setActive }),
@@ -220,19 +353,24 @@ export function RomanceOrbitApp() {
     h('section', { className: 'brand-float' },
       h('span', null, 'ROMANCE ORBIT'),
       h('h1', null, '极光玫瑰宇宙'),
-      h('p', null, '旋转一颗由心跳、玫瑰、月光和未来组成的星体。')
+      h('p', null, '点击一颗光点，不是读一段文字，而是打开一个专属的浪漫仪式。')
     ),
     h('section', { className: 'search-float' },
       h('input', { value: query, onChange: (e: any) => setQuery(e.target.value), placeholder: '搜索：玫瑰 / 月光 / 极光 / 未来' }),
       h('div', { className: 'memory-list' }, ...list.map((n) => h('button', { key: n.id, onClick: () => setActive(n), className: active.id === n.id ? 'is-active' : '' }, h('b', null, n.title), h('span', null, n.subtitle))))
     ),
     h('section', { className: 'detail-float' },
-      h('span', { className: 'detail-kicker' }, active.id.toUpperCase()),
+      h('span', { className: 'detail-kicker' }, detail.kicker),
       h('h2', null, active.title),
       h('p', null, active.subtitle),
-      h('small', null, active.note),
+      h('div', { className: 'ritual-card' },
+        h('b', null, detail.title),
+        h('span', null, detail.story)
+      ),
+      h('div', { className: 'ritual-lines' }, ...detail.moments.map((m) => h('em', { key: m }, m))),
+      h('small', null, detail.promise),
       h('div', { className: 'tag-row' }, ...themeItems.map((item) => h('button', { key: item.id, style: { '--c': item.color } as CSSProperties }, item.title)))
     ),
-    h('section', { className: 'hint-float' }, '拖动旋转 · 滚轮缩放 · 点击光点进入记忆碎片')
+    h('section', { className: 'hint-float' }, '拖动旋转 · 滚轮缩放 · 点击光点打开视觉仪式')
   );
 }
