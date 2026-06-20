@@ -32,36 +32,73 @@ void main(){
 }
 `;
 
+const roseVertexShader = `
+attribute float size;
+attribute vec3 color;
+attribute float delay;
+attribute float kind;
+uniform float uProgress;
+varying vec3 vColor;
+varying float vAlpha;
+float easeOutCubic(float t){ return 1.0 - pow(1.0 - t, 3.0); }
+void main(){
+  float local = clamp((uProgress - delay) / max(0.001, 1.0 - delay), 0.0, 1.0);
+  float e = easeOutCubic(local);
+  vec3 from = normalize(position + vec3(0.001, 0.002, 0.003)) * 0.018;
+  vec3 burst = normalize(position + vec3(0.02, -0.01, 0.015)) * (0.24 + kind * 0.18) * sin(local * 3.14159);
+  vec3 p = mix(from, position, e) + burst * (1.0 - e);
+  vColor = color;
+  vAlpha = smoothstep(0.0, 0.16, local);
+  vec4 mv = modelViewMatrix * vec4(p, 1.0);
+  gl_PointSize = clamp(size * (0.35 + e * 1.2) * (340.0 / max(1.0, -mv.z)), 1.0, 26.0);
+  gl_Position = projectionMatrix * mv;
+}
+`;
+
+const roseFragmentShader = `
+varying vec3 vColor;
+varying float vAlpha;
+void main(){
+  vec2 p = gl_PointCoord - vec2(0.5);
+  float d = length(p);
+  float core = smoothstep(0.5, 0.03, d);
+  float glow = smoothstep(0.5, 0.16, d) * 0.45;
+  float a = (core + glow) * vAlpha;
+  if(a < 0.025) discard;
+  gl_FragColor = vec4(vColor, a);
+}
+`;
+
 const detail: Record<string, { kicker: string; title: string; text: string; tags: string[] }> = {
   first: {
     kicker: 'SCENE 01 · 星光初见',
-    title: '一束光先替我靠近你',
-    text: '镜头会先飞到这一束微光旁边，然后展开一条静止的心跳彗尾。',
-    tags: ['靠近', '心跳', '星束']
+    title: '一束光爆开成玫瑰形的第一眼',
+    text: '镜头抵达光点后，星束先向外爆开，再停成一朵带心跳尾迹的玫瑰星云。',
+    tags: ['靠近', '爆发', '玫瑰']
   },
   rose: {
     kicker: 'SCENE 02 · 玫瑰星云',
-    title: '不是一朵花，是一片夜空盛开',
-    text: '抵达玫瑰光点之后，五瓣玫瑰星云会在空间里停成一幅画。',
-    tags: ['玫瑰', '花瓣', '柔光']
+    title: '光点在夜空里盛开成一朵玫瑰',
+    text: '所有粒子从光点中心喷发，沿五瓣玫瑰曲线铺开，最后停成静态花形星云。',
+    tags: ['玫瑰', '花瓣', '盛开']
   },
   moon: {
     kicker: 'SCENE 03 · 月光来信',
-    title: '月亮把没说出口的话写成金色轨道',
-    text: '金色信笺线会在月光节点旁边展开，像一封漂浮在夜空里的信。',
-    tags: ['月光', '信笺', '金色']
+    title: '月光先写成玫瑰，再落成一封信',
+    text: '光点先爆发成月白玫瑰，随后金色信笺轨道停在花瓣之间。',
+    tags: ['月光', '信笺', '玫瑰']
   },
   aurora: {
     kicker: 'SCENE 04 · 极光慢舞',
-    title: '安静也可以有颜色',
-    text: '青绿色光幕会在镜头靠近后固定下来，像一片温柔的极光背景。',
-    tags: ['极光', '慢舞', '夜空']
+    title: '极光从玫瑰花瓣边缘升起',
+    text: '青绿色光点先形成玫瑰轮廓，再在花瓣后停成一片极光光幕。',
+    tags: ['极光', '花瓣', '静止']
   },
   future: {
     kicker: 'SCENE 05 · 未来光环',
-    title: '把愿望折成一圈一圈靠近的轨道',
-    text: '多层戒环星门会在未来光点旁边停住，像一个许愿坐标。',
-    tags: ['星门', '戒环', '未来']
+    title: '一朵玫瑰被未来光环收藏',
+    text: '光点爆开成玫瑰，外层戒环随后合拢，像一个安静的许愿坐标。',
+    tags: ['星门', '戒环', '玫瑰']
   }
 };
 
@@ -91,6 +128,16 @@ function heart(t: number, scale: number) {
   const x = 16 * Math.pow(Math.sin(t), 3) * scale;
   const y = (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) * scale - 0.18;
   return new THREE.Vector3(x, y, 0);
+}
+
+function rosePoint(theta: number, radius: number, depth: number) {
+  const petal = 0.54 + 0.46 * Math.cos(5 * theta);
+  const curl = 0.08 * Math.sin(10 * theta + radius * 3.2);
+  const r = radius * (0.28 + petal * 1.12 + curl);
+  const x = Math.cos(theta) * r * 1.05;
+  const y = Math.sin(theta) * r * 0.72;
+  const z = depth + Math.sin(theta * 5) * 0.08 * radius;
+  return new THREE.Vector3(x, y, z);
 }
 
 function makeNodes(): OrbitNode[] {
@@ -124,6 +171,57 @@ function pointGeometry(count: number, seed: number, make: (i: number, rand: () =
   return geometry;
 }
 
+function roseGeometry(active: OrbitNode) {
+  const seed = active.id.split('').reduce((sum, ch) => sum + ch.charCodeAt(0), 91);
+  const rand = random(seed);
+  const count = 4200;
+  const pos = new Float32Array(count * 3);
+  const col = new Float32Array(count * 3);
+  const size = new Float32Array(count);
+  const delay = new Float32Array(count);
+  const kind = new Float32Array(count);
+  const base = new THREE.Color(active.color);
+  const rose = new THREE.Color('#ff7ac4');
+  const moon = new THREE.Color('#fff0ba');
+  const cyan = new THREE.Color('#90fff0');
+  const white = new THREE.Color('#fff7fb');
+  for (let i = 0; i < count; i += 1) {
+    const ring = i / count;
+    const theta = (i * 2.399963 + rand() * 0.18) % (Math.PI * 2);
+    const radius = Math.pow(rand(), 0.46) * 1.18;
+    const depth = (rand() - 0.5) * (0.16 + radius * 0.52);
+    let p = rosePoint(theta, radius, depth);
+    const classId = i % 11;
+    if (classId === 0) {
+      const sparkR = 1.08 + rand() * 0.62;
+      p = rosePoint(theta, sparkR, (rand() - 0.5) * 0.9);
+      kind[i] = 1.0;
+    } else if (classId === 1) {
+      const coreR = Math.pow(rand(), 2.2) * 0.22;
+      p = new THREE.Vector3((rand() - 0.5) * coreR, (rand() - 0.5) * coreR, (rand() - 0.5) * 0.16);
+      kind[i] = 0.3;
+    } else {
+      kind[i] = 0.55 + rand() * 0.35;
+    }
+    pos.set([p.x, p.y, p.z], i * 3);
+    const petalMix = 0.25 + 0.45 * Math.sin(theta * 5) * Math.sin(theta * 5);
+    let color = base.clone().lerp(rose, 0.25 + petalMix);
+    if (active.id === 'moon' || active.id === 'future') color = color.lerp(moon, 0.28 + rand() * 0.22);
+    if (active.id === 'aurora') color = color.lerp(cyan, 0.34 + rand() * 0.28);
+    color = color.lerp(white, classId === 1 ? 0.72 : rand() * 0.18);
+    col.set([color.r, color.g, color.b], i * 3);
+    size[i] = classId === 1 ? 0.09 + rand() * 0.08 : 0.02 + Math.pow(rand(), 1.6) * 0.085;
+    delay[i] = Math.min(0.78, ring * 0.34 + rand() * 0.22 + (classId === 0 ? 0.12 : 0));
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geometry.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  geometry.setAttribute('size', new THREE.BufferAttribute(size, 1));
+  geometry.setAttribute('delay', new THREE.BufferAttribute(delay, 1));
+  geometry.setAttribute('kind', new THREE.BufferAttribute(kind, 1));
+  return geometry;
+}
+
 function GlowMaterial() {
   return el('shaderMaterial', {
     vertexShader,
@@ -135,7 +233,7 @@ function GlowMaterial() {
 }
 
 function DeepStars() {
-  const geometry = useMemo(() => pointGeometry(2200, 81723, (_i, rand) => {
+  const geometry = useMemo(() => pointGeometry(2600, 81723, (_i, rand) => {
     const r = 13 + rand() * 23;
     const a = rand() * Math.PI * 2;
     const p = new THREE.Vector3(Math.cos(a) * r, (rand() - 0.5) * 15, Math.sin(a) * r);
@@ -148,7 +246,7 @@ function DeepStars() {
 function StarHeart() {
   const geometry = useMemo(() => {
     const palette = ['#ff7ac4', '#ffc8e5', '#bda4ff', '#8ffff1', '#fff0bc'].map(color => new THREE.Color(color));
-    return pointGeometry(15500, 74019, (_i, rand) => {
+    return pointGeometry(14500, 74019, (_i, rand) => {
       const t = rand() * Math.PI * 2;
       const layer = Math.pow(rand(), 0.54);
       const p = heart(t, 0.09 + layer * 0.22);
@@ -174,62 +272,45 @@ function Ring({ rx, ry, color, opacity, rot }: { rx: number; ry: number; color: 
   return el('line', { geometry, rotation: rot }, el('lineBasicMaterial', { color, transparent: true, opacity, blending: THREE.AdditiveBlending }));
 }
 
+function RoseBloomMaterial({ materialRef }: { materialRef: any }) {
+  return el('shaderMaterial', {
+    ref: materialRef,
+    vertexShader: roseVertexShader,
+    fragmentShader: roseFragmentShader,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    uniforms: { uProgress: { value: 0 } }
+  });
+}
+
 function Ritual({ active, focusKey }: { active: OrbitNode; focusKey: number }) {
   const groupRef = useRef<THREE.Group>(null);
-  const progress = useRef(0);
-  useEffect(() => { progress.current = 0; }, [focusKey]);
+  const materialRef = useRef<any>(null);
+  const progress = useRef(-0.46);
+  useEffect(() => { progress.current = -0.46; }, [focusKey]);
 
-  const geometry = useMemo(() => {
-    const seed = active.id.split('').reduce((sum, ch) => sum + ch.charCodeAt(0), 37);
-    const base = new THREE.Color(active.color);
-    const count = active.id === 'rose' ? 1600 : active.id === 'aurora' ? 1300 : 1050;
-    return pointGeometry(count, seed, (i, rand) => {
-      const u = (i / count) * Math.PI * 2;
-      const layer = Math.pow(rand(), 0.58);
-      let x = 0;
-      let y = 0;
-      let z = 0;
-      if (active.id === 'rose') {
-        const petal = 1 + 0.48 * Math.sin(5 * u);
-        x = Math.cos(u) * (0.25 + layer * 0.96) * petal;
-        y = Math.sin(u) * (0.18 + layer * 0.62) * petal;
-        z = (rand() - 0.5) * 0.54;
-      } else if (active.id === 'moon') {
-        x = ((i % 36) / 36 - 0.5) * 1.65;
-        y = (Math.floor(i / 36) % 30 - 15) * 0.028 + Math.sin(u) * 0.16;
-        z = (rand() - 0.5) * 0.44;
-      } else if (active.id === 'aurora') {
-        x = (rand() - 0.5) * 1.9;
-        y = Math.sin(x * 4.4 + u) * 0.45 + (rand() - 0.5) * 0.16;
-        z = Math.cos(x * 3.1 + u) * 0.45;
-      } else if (active.id === 'future') {
-        x = Math.cos(u) * (0.32 + layer * 0.94);
-        y = Math.sin(u) * (0.18 + (i % 4) * 0.12 + layer * 0.24);
-        z = Math.sin(u + (i % 4)) * 0.54;
-      } else {
-        const s = Math.pow(i / count, 0.72);
-        x = -0.78 + s * 1.56 + (rand() - 0.5) * 0.16;
-        y = Math.sin(s * Math.PI * 2) * 0.28 + (rand() - 0.5) * 0.15;
-        z = (rand() - 0.5) * (0.65 - s * 0.24);
-      }
-      const highlight = active.id === 'moon' || active.id === 'future' ? '#fff1bd' : active.id === 'aurora' ? '#90fff0' : '#fff7fb';
-      const c = base.clone().lerp(new THREE.Color(highlight), 0.25 + rand() * 0.3);
-      return { p: new THREE.Vector3(x, y, z), c, s: 0.018 + Math.pow(rand(), 1.8) * 0.078 };
-    });
-  }, [active.id, active.color]);
+  const geometry = useMemo(() => roseGeometry(active), [active.id, active.color]);
 
   useFrame((_state, delta) => {
     const group = groupRef.current;
+    const material = materialRef.current;
+    progress.current = Math.min(1, progress.current + delta * 0.72);
+    const visible = Math.max(0, progress.current);
+    const e = easeOut(visible);
+    if (material?.uniforms?.uProgress) material.uniforms.uProgress.value = visible;
     if (!group) return;
-    progress.current = Math.min(1, progress.current + delta * 0.82);
-    const e = easeOut(progress.current);
-    group.scale.setScalar(0.05 + e * 1.05);
+    group.scale.setScalar(0.28 + e * 0.88);
+    group.rotation.z = (1 - e) * 0.9;
+    group.rotation.y = (1 - e) * -0.42;
   });
 
+  const ringOpacity = active.id === 'rose' ? 0.38 : 0.24;
   const children = [
-    h(Ring, { key: 'r1', rx: 1.28, ry: 0.66, color: active.color, opacity: 0.34, rot: [0.35, 0.18, 0.12] }),
-    h(Ring, { key: 'r2', rx: 0.78, ry: 1.02, color: active.id === 'moon' ? '#fff1bd' : '#91fff0', opacity: 0.18, rot: [-0.6, 0.14, -0.38] }),
-    el('points', { key: 'pts', geometry }, h(GlowMaterial))
+    h(Ring, { key: 'rose-orbit-1', rx: 1.56, ry: 0.78, color: active.color, opacity: ringOpacity, rot: [0.35, 0.18, 0.12] }),
+    h(Ring, { key: 'rose-orbit-2', rx: 0.92, ry: 1.22, color: active.id === 'moon' || active.id === 'future' ? '#fff1bd' : '#91fff0', opacity: 0.18, rot: [-0.6, 0.14, -0.38] }),
+    h(Ring, { key: 'rose-orbit-3', rx: 1.1, ry: 0.42, color: '#fff7fb', opacity: 0.12, rot: [0.06, 0.92, 0.24] }),
+    el('points', { key: 'rose-points', geometry }, h(RoseBloomMaterial, { materialRef }))
   ];
   return el('group', { ref: groupRef, position: active.pos }, children);
 }
@@ -321,7 +402,7 @@ export function RomanceOrbitApp() {
     h('section', { className: 'brand-float' },
       h('span', null, 'ROMANCE ORBIT'),
       h('h1', null, '极光玫瑰宇宙'),
-      h('p', null, '点击光点，镜头会靠近那里，再停成一张可以旋转的浪漫 3D 场景。')
+      h('p', null, '点击光点，镜头靠近后，光点会爆发成一朵静态玫瑰星云。')
     ),
     h('section', { className: 'search-float' },
       h('input', { value: query, onChange: (event: any) => setQuery(event.target.value), placeholder: '搜索：玫瑰 / 月光 / 极光 / 未来' }),
@@ -342,6 +423,6 @@ export function RomanceOrbitApp() {
       ),
       h('div', { className: 'ritual-lines' }, activeDetail.tags.map(tag => h('em', { key: tag }, tag)))
     ),
-    h('section', { className: 'hint-float' }, '点击光点：镜头靠近 · 过场展开 · 停住成静态浪漫场景 · 之后可自由旋转')
+    h('section', { className: 'hint-float' }, '点击光点：镜头靠近 · 光点爆发 · 玫瑰成形 · 停住成静态 3D 浪漫场景')
   );
 }
