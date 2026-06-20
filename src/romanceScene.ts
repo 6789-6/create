@@ -8,102 +8,203 @@ import { nodeSeeds, OrbitNode } from './romanceCore';
 const h = createElement;
 const three = (tag: string, props?: any, ...children: any[]) => h(tag as any, props, ...children);
 
+const pointVertex = `
+  attribute float size;
+  attribute vec3 color;
+  varying vec3 vColor;
+  void main() {
+    vColor = color;
+    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+    float perspective = 300.0 / max(1.0, -mvPosition.z);
+    gl_PointSize = clamp(size * perspective, 1.0, 16.0);
+    gl_Position = projectionMatrix * mvPosition;
+  }
+`;
+
+const pointFragment = `
+  varying vec3 vColor;
+  void main() {
+    vec2 p = gl_PointCoord - vec2(0.5);
+    float d = length(p);
+    float core = smoothstep(0.5, 0.0, d);
+    float halo = smoothstep(0.5, 0.16, d) * 0.42;
+    float alpha = core * 0.92 + halo;
+    if (alpha < 0.025) discard;
+    gl_FragColor = vec4(vColor, alpha);
+  }
+`;
+
+function seeded(seed: number) {
+  let t = seed + 0x6d2b79f5;
+  return () => {
+    t += 0x6d2b79f5;
+    let r = Math.imul(t ^ (t >>> 15), 1 | t);
+    r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 function heart(t: number, scale = 0.16) {
   const x = 16 * Math.pow(Math.sin(t), 3) * scale;
-  const y = (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) * scale - 0.25;
+  const y = (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) * scale - 0.18;
   return new THREE.Vector3(x, y, 0);
 }
 
 function makeNodes(): OrbitNode[] {
   return nodeSeeds.map(([id, title, subtitle, color, note], i) => {
-    const t = i / nodeSeeds.length * Math.PI * 2 + 0.25;
-    const p = heart(t, 0.18 + (i % 3) * 0.012);
-    p.z = Math.sin(t * 2.2) * 0.72;
+    const t = (i / nodeSeeds.length) * Math.PI * 2 + 0.38;
+    const p = heart(t, 0.19 + (i % 2) * 0.018);
+    p.z = Math.sin(t * 2.0) * 0.82;
     return { id, title, subtitle, color, note, pos: [p.x, p.y, p.z] };
   });
 }
 
-function PointsCloud() {
-  const positions = useMemo(() => {
-    const count = 6800;
-    const arr = new Float32Array(count * 3);
+function SoftParticles({ count = 14500 }: { count?: number }) {
+  const geometry = useMemo(() => {
+    const rand = seeded(20260620);
+    const positions = new Float32Array(count * 3);
+    const colors = new Float32Array(count * 3);
+    const sizes = new Float32Array(count);
+    const palette = ['#ff7abf', '#ffc1df', '#bca5ff', '#87fff2', '#fff0b8'].map((c) => new THREE.Color(c));
+
     for (let i = 0; i < count; i++) {
-      const t = Math.random() * Math.PI * 2;
-      const layer = 0.42 + Math.pow(Math.random(), 0.64) * 0.9;
-      const p = heart(t, 0.15 * layer);
-      p.x += (Math.random() - 0.5) * 0.42;
-      p.y += (Math.random() - 0.5) * 0.34;
-      p.z = Math.sin(t * 3.2) * 0.28 + (Math.random() - 0.5) * 1.35;
-      arr[i * 3] = p.x;
-      arr[i * 3 + 1] = p.y;
-      arr[i * 3 + 2] = p.z;
+      const t = rand() * Math.PI * 2;
+      const band = Math.pow(rand(), 0.52);
+      const layer = 0.32 + band * 1.08;
+      const p = heart(t, 0.19 * layer);
+      const arm = Math.sin(t * 5 + band * 5.2);
+      const haze = 0.12 + 0.5 * Math.pow(rand(), 2.0);
+      p.x += (rand() - 0.5) * haze + arm * 0.075 * (1 - band);
+      p.y += (rand() - 0.5) * haze * 0.78;
+      p.z = Math.sin(t * 2.2) * 0.52 * layer + (rand() - 0.5) * (1.2 - band * 0.45);
+
+      positions[i * 3] = p.x;
+      positions[i * 3 + 1] = p.y;
+      positions[i * 3 + 2] = p.z;
+
+      const c = palette[Math.floor(rand() * palette.length)].clone();
+      if (band < 0.32) c.lerp(new THREE.Color('#fff7fb'), 0.34);
+      colors[i * 3] = c.r;
+      colors[i * 3 + 1] = c.g;
+      colors[i * 3 + 2] = c.b;
+      sizes[i] = 0.022 + Math.pow(rand(), 2.6) * 0.055;
     }
-    return arr;
-  }, []);
-  return three('points', null,
-    three('bufferGeometry', null, three('bufferAttribute', { attach: 'attributes-position', args: [positions, 3] })),
-    three('pointsMaterial', { size: 0.018, color: '#ff9ed6', transparent: true, opacity: 0.62, depthWrite: false, blending: THREE.AdditiveBlending })
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geo.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+    return geo;
+  }, [count]);
+
+  return three('points', { geometry },
+    three('shaderMaterial', {
+      vertexShader: pointVertex,
+      fragmentShader: pointFragment,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending
+    })
   );
 }
 
 function DeepStars() {
-  const positions = useMemo(() => {
-    const arr = new Float32Array(1100 * 3);
-    for (let i = 0; i < 1100; i++) {
-      const r = 12 + Math.random() * 21;
-      const a = Math.random() * Math.PI * 2;
-      const b = Math.acos(Math.random() * 2 - 1);
-      arr[i * 3] = Math.sin(b) * Math.cos(a) * r;
-      arr[i * 3 + 1] = Math.cos(b) * r;
-      arr[i * 3 + 2] = Math.sin(b) * Math.sin(a) * r;
+  const geometry = useMemo(() => {
+    const rand = seeded(93011);
+    const count = 1800;
+    const positions = new Float32Array(count * 3);
+    const colors = new Float32Array(count * 3);
+    const sizes = new Float32Array(count);
+    const palette = ['#ffffff', '#ffb4df', '#9dfcf4', '#b6c7ff'].map((c) => new THREE.Color(c));
+    for (let i = 0; i < count; i++) {
+      const r = 15 + rand() * 24;
+      const a = rand() * Math.PI * 2;
+      const y = (rand() - 0.5) * 16;
+      positions[i * 3] = Math.cos(a) * r;
+      positions[i * 3 + 1] = y;
+      positions[i * 3 + 2] = Math.sin(a) * r;
+      const c = palette[Math.floor(rand() * palette.length)];
+      colors[i * 3] = c.r;
+      colors[i * 3 + 1] = c.g;
+      colors[i * 3 + 2] = c.b;
+      sizes[i] = 0.01 + rand() * 0.028;
     }
-    return arr;
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geo.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+    return geo;
   }, []);
-  return three('points', null,
-    three('bufferGeometry', null, three('bufferAttribute', { attach: 'attributes-position', args: [positions, 3] })),
-    three('pointsMaterial', { size: 0.024, color: '#fff2dd', transparent: true, opacity: 0.38, depthWrite: false })
+
+  return three('points', { geometry },
+    three('shaderMaterial', {
+      vertexShader: pointVertex,
+      fragmentShader: pointFragment,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending
+    })
   );
 }
 
-function Ring({ rx, ry, color, rot = [0, 0, 0], opacity = 0.25 }: { rx: number; ry: number; color: string; rot?: [number, number, number]; opacity?: number }) {
+function Ribbon({ rx, ry, color, rot = [0, 0, 0], opacity = 0.25 }: { rx: number; ry: number; color: string; rot?: [number, number, number]; opacity?: number }) {
   const geometry = useMemo(() => {
     const pts: THREE.Vector3[] = [];
-    for (let i = 0; i <= 220; i++) {
-      const t = i / 220 * Math.PI * 2;
-      pts.push(new THREE.Vector3(Math.cos(t) * rx, Math.sin(t) * ry, Math.sin(t * 2) * 0.08));
+    for (let i = 0; i <= 360; i++) {
+      const t = (i / 360) * Math.PI * 2;
+      pts.push(new THREE.Vector3(Math.cos(t) * rx, Math.sin(t) * ry, Math.sin(t * 2.0) * 0.18));
     }
     return new THREE.BufferGeometry().setFromPoints(pts);
   }, [rx, ry]);
-  return three('line', { geometry, rotation: rot }, three('lineBasicMaterial', { color, transparent: true, opacity, blending: THREE.AdditiveBlending }));
+  return three('line', { geometry, rotation: rot },
+    three('lineBasicMaterial', { color, transparent: true, opacity, blending: THREE.AdditiveBlending })
+  );
+}
+
+function CoreGlow() {
+  return three('group', null,
+    three('mesh', { scale: [1.05, 0.72, 0.56] },
+      three('sphereGeometry', { args: [1, 64, 64] }),
+      three('meshBasicMaterial', { color: '#ffaad8', transparent: true, opacity: 0.055, depthWrite: false, blending: THREE.AdditiveBlending })
+    ),
+    three('mesh', { scale: [0.34, 0.24, 0.2] },
+      three('sphereGeometry', { args: [1, 48, 48] }),
+      three('meshBasicMaterial', { color: '#fff7fb', transparent: true, opacity: 0.18, depthWrite: false, blending: THREE.AdditiveBlending })
+    )
+  );
 }
 
 function NodeMesh({ node, active, select }: { node: OrbitNode; active: boolean; select: (node: OrbitNode) => void }) {
   return three('group', { position: node.pos },
     three('mesh', { onClick: (event: any) => { event.stopPropagation(); select(node); } },
-      three('sphereGeometry', { args: [active ? 0.16 : 0.105, 32, 32] }),
-      three('meshBasicMaterial', { color: node.color, transparent: true, opacity: active ? 1 : 0.86 })
+      three('sphereGeometry', { args: [active ? 0.14 : 0.075, 32, 32] }),
+      three('meshBasicMaterial', { color: node.color, transparent: true, opacity: active ? 1 : 0.88 })
     ),
-    three('mesh', { scale: active ? 2.3 : 1.55 },
-      three('sphereGeometry', { args: [active ? 0.16 : 0.105, 32, 32] }),
-      three('meshBasicMaterial', { color: node.color, transparent: true, opacity: active ? 0.22 : 0.09, depthWrite: false, blending: THREE.AdditiveBlending })
+    three('mesh', { scale: active ? 3.1 : 1.95 },
+      three('sphereGeometry', { args: [active ? 0.14 : 0.075, 32, 32] }),
+      three('meshBasicMaterial', { color: node.color, transparent: true, opacity: active ? 0.18 : 0.07, depthWrite: false, blending: THREE.AdditiveBlending })
     ),
-    active ? h(Html, { className: 'node-label', distanceFactor: 8, position: [0, 0.34, 0], center: true }, h('span', null, node.title)) : null
+    active ? h(Html, { className: 'node-label', distanceFactor: 8, position: [0, 0.32, 0], center: true }, h('span', null, node.title)) : null
   );
 }
 
 function Scene({ nodes, active, select }: { nodes: OrbitNode[]; active: OrbitNode; select: (node: OrbitNode) => void }) {
-  return h(Canvas, { camera: { position: [0, 0.35, 7.4], fov: 42 }, dpr: [1, 1.7] },
-    three('color', { attach: 'background', args: ['#05010e'] }),
-    three('ambientLight', { intensity: 0.95 }),
+  return h(Canvas, { camera: { position: [0, 0.15, 6.9], fov: 38 }, dpr: [1, 1.6] },
+    three('color', { attach: 'background', args: ['#05000d'] }),
+    three('ambientLight', { intensity: 0.55 }),
+    three('pointLight', { position: [2.5, 2.4, 3.4], intensity: 0.9, color: '#ffaddd' }),
+    three('pointLight', { position: [-2.2, -1.8, 2.1], intensity: 0.46, color: '#91fff0' }),
     h(DeepStars),
-    three('group', { rotation: [-0.08, -0.2, 0] },
-      h(PointsCloud),
-      h(Ring, { rx: 3.05, ry: 2.0, color: '#ff8aca', opacity: 0.32, rot: [0.15, 0, 0.1] }),
-      h(Ring, { rx: 3.45, ry: 2.26, color: '#91fff0', opacity: 0.14, rot: [-0.55, 0, -0.12] }),
-      h(Ring, { rx: 2.35, ry: 1.46, color: '#fff0b8', opacity: 0.18, rot: [0.85, 0.15, 0.4] }),
+    three('group', { rotation: [-0.05, -0.16, 0] },
+      h(CoreGlow),
+      h(SoftParticles),
+      h(Ribbon, { rx: 3.05, ry: 1.94, color: '#ff83c8', opacity: 0.36, rot: [0.18, 0, 0.08] }),
+      h(Ribbon, { rx: 3.42, ry: 2.22, color: '#91fff0', opacity: 0.16, rot: [-0.58, 0.04, -0.13] }),
+      h(Ribbon, { rx: 2.3, ry: 1.42, color: '#fff0b8', opacity: 0.16, rot: [0.82, 0.14, 0.4] }),
+      h(Ribbon, { rx: 3.9, ry: 2.58, color: '#c8a7ff', opacity: 0.09, rot: [0.25, 0.34, -0.36] }),
       ...nodes.map((node) => h(NodeMesh, { key: node.id, node, active: active.id === node.id, select }))
     ),
-    h(OrbitControls, { enablePan: false, enableDamping: true, dampingFactor: 0.06, rotateSpeed: 0.62, minDistance: 4.2, maxDistance: 10.5 })
+    h(OrbitControls, { enablePan: false, enableDamping: true, dampingFactor: 0.07, rotateSpeed: 0.58, minDistance: 3.8, maxDistance: 9.5 })
   );
 }
 
@@ -111,13 +212,27 @@ export function RomanceOrbitApp() {
   const nodes = useMemo(makeNodes, []);
   const [active, setActive] = useState(nodes[0]);
   const [query, setQuery] = useState('');
-  const list = (query ? nodes.filter((n) => `${n.title}${n.subtitle}`.includes(query)) : nodes).slice(0, 6);
+  const list = (query ? nodes.filter((n) => `${n.title}${n.subtitle}${n.note}`.includes(query)) : nodes).slice(0, 5);
+
   return h('main', { className: 'romance-shell', style: { '--accent': active.color } as CSSProperties },
     h(Scene, { nodes, active, select: setActive }),
-    h('div', { className: 'aurora-bg' }),
-    h('section', { className: 'floating-title' }, h('span', null, 'ROMANCE ORBIT'), h('h1', null, '极光玫瑰宇宙'), h('p', null, '稳定旋转的 3D 浪漫星体，点开光点进入细节层。')),
-    h('section', { className: 'floating-search' }, h('input', { value: query, onChange: (e: any) => setQuery(e.target.value), placeholder: '搜索：玫瑰 / 月光 / 极光 / 未来' }), h('div', null, ...list.map((n) => h('button', { key: n.id, onClick: () => setActive(n) }, h('b', null, n.title), h('span', null, n.subtitle))))),
-    h('section', { className: 'memory-card' }, h('span', { className: 'card-kicker' }, active.id.toUpperCase()), h('h2', null, active.title), h('p', null, active.subtitle), h('small', null, active.note)),
-    h('section', { className: 'romance-dock' }, ...themeItems.map((item) => h('button', { key: item.id, style: { '--c': item.color } as CSSProperties }, item.title)))
+    h('div', { className: 'romance-vignette' }),
+    h('section', { className: 'brand-float' },
+      h('span', null, 'ROMANCE ORBIT'),
+      h('h1', null, '极光玫瑰宇宙'),
+      h('p', null, '旋转一颗由心跳、玫瑰、月光和未来组成的星体。')
+    ),
+    h('section', { className: 'search-float' },
+      h('input', { value: query, onChange: (e: any) => setQuery(e.target.value), placeholder: '搜索：玫瑰 / 月光 / 极光 / 未来' }),
+      h('div', { className: 'memory-list' }, ...list.map((n) => h('button', { key: n.id, onClick: () => setActive(n), className: active.id === n.id ? 'is-active' : '' }, h('b', null, n.title), h('span', null, n.subtitle))))
+    ),
+    h('section', { className: 'detail-float' },
+      h('span', { className: 'detail-kicker' }, active.id.toUpperCase()),
+      h('h2', null, active.title),
+      h('p', null, active.subtitle),
+      h('small', null, active.note),
+      h('div', { className: 'tag-row' }, ...themeItems.map((item) => h('button', { key: item.id, style: { '--c': item.color } as CSSProperties }, item.title)))
+    ),
+    h('section', { className: 'hint-float' }, '拖动旋转 · 滚轮缩放 · 点击光点进入记忆碎片')
   );
 }
