@@ -6,12 +6,12 @@ import { nodeSeeds, OrbitNode } from './romanceCore';
 
 const h = createElement;
 const el = (tag: string, props?: any, ...children: any[]) => h(tag as any, props, ...children);
-
 const sceneRot = new THREE.Euler(-0.08, -0.2, 0.03);
 
-const detail: Record<string, { kicker: string; title: string; text: string; tags: string[]; rose: string; accent: string }> = {
-  first: { kicker: 'SCENE 01 · 初见微光', title: '第一枝玫瑰', text: '光点安静散成花粉，一枝玫瑰从夜色里生长出来。没有刺眼爆闪，只保留温柔的开场。', tags: ['花粉', '初见', '静止'], rose: '#d94a83', accent: '#ffd8eb' },
-  rose: { kicker: 'SCENE 02 · 玫瑰星云', title: '玫瑰在星光里停住', text: '大光点不是玫瑰本身，它只负责消散。真正的主体是一枝完整玫瑰：花茎、叶子、花托和层叠花瓣。', tags: ['一枝玫瑰', '花瓣', '静态'], rose: '#cf2f6f', accent: '#ffc0db' },
+type Detail = { kicker: string; title: string; text: string; tags: string[]; rose: string; accent: string };
+const detail: Record<string, Detail> = {
+  first: { kicker: 'SCENE 01 · 初见微光', title: '第一枝玫瑰', text: '点击光点后，镜头靠近它；光点只安静散成花粉，一枝完整玫瑰在原地生长并停住。', tags: ['花粉', '初见', '静止'], rose: '#d94a83', accent: '#ffd8eb' },
+  rose: { kicker: 'SCENE 02 · 玫瑰星云', title: '一枝玫瑰在星光里停住', text: '大光点不是玫瑰本体。它会淡出，随后花茎、叶子、花托和层叠花瓣在同一位置生成。', tags: ['一枝玫瑰', '花瓣', '静态'], rose: '#cf2f6f', accent: '#ffc0db' },
   moon: { kicker: 'SCENE 03 · 月光来信', title: '月光落在玫瑰边缘', text: '玫瑰保持安静，月白细环像信纸边缘的金线，只作为陪衬，不抢主体。', tags: ['月光', '信笺', '克制'], rose: '#e05f92', accent: '#ffe9b7' },
   aurora: { kicker: 'SCENE 04 · 极光慢舞', title: '极光在玫瑰背后凝固', text: '青绿色光带停在远处，玫瑰本体仍然是画面的中心。浪漫不是晃眼，而是有呼吸感的静止。', tags: ['极光', '夜色', '静止'], rose: '#d84f8e', accent: '#98fff0' },
   future: { kicker: 'SCENE 05 · 未来光环', title: '把玫瑰收藏进未来', text: '细戒环围住玫瑰，不再做巨大光门。它像一枚轻轻悬浮的承诺。', tags: ['戒环', '未来', '承诺'], rose: '#d94b7a', accent: '#ffd28f' }
@@ -62,7 +62,7 @@ void main(){
   float d=length(p);
   float a=smoothstep(0.5,0.05,d);
   if(a<0.03) discard;
-  gl_FragColor=vec4(vColor,a*0.72);
+  gl_FragColor=vec4(vColor,a*0.68);
 }`;
 function StarMaterial() {
   return el('shaderMaterial', { vertexShader: starVertex, fragmentShader: starFragment, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
@@ -158,11 +158,11 @@ function SingleRose({ active, focusKey }: { active: OrbitNode; focusKey: number 
   const age = useRef(0);
   useEffect(() => { age.current = 0; }, [focusKey]);
   useFrame((_s, d) => {
-    age.current = Math.min(1, age.current + d * 0.65);
+    age.current = Math.min(1, age.current + d * 0.75);
     const e = easeInOut(age.current);
     if (group.current) {
-      group.current.scale.setScalar(0.18 + e * 0.82);
-      group.current.rotation.y = (1 - e) * -0.65;
+      group.current.scale.setScalar(0.08 + e * 0.96);
+      group.current.rotation.y = (1 - e) * -0.55;
       group.current.position.y = -0.12 + e * 0.12;
     }
   });
@@ -213,16 +213,17 @@ function NodeMesh({ node, active, select }: { node: OrbitNode; active: boolean; 
     el('mesh', { key: 'halo' }, el('sphereGeometry', { args: [active ? 0.19 : 0.13, 32, 32] }), el('meshBasicMaterial', { color: node.color, transparent: true, opacity: active ? 0.16 : 0.07, blending: THREE.AdditiveBlending, depthWrite: false }))
   ]);
 }
-function CameraRig({ active }: { active: OrbitNode }) {
+function CameraRig({ active, focusKey }: { active: OrbitNode; focusKey: number }) {
   const { camera } = useThree();
   const controls = useRef<any>(null);
   const flight = useRef({ from: new THREE.Vector3(0, 0.2, 5.8), to: new THREE.Vector3(0, 0.2, 5.8), target: new THREE.Vector3(), t: 1 });
   useEffect(() => {
+    if (focusKey === 0) return;
     const target = worldPosition(active);
     const dir = target.clone().normalize();
     const to = target.clone().add(dir.multiplyScalar(2.05)).add(new THREE.Vector3(0, 0.35, 0.55));
     flight.current = { from: camera.position.clone(), to, target, t: 0 };
-  }, [active.id]);
+  }, [active.id, focusKey]);
   useFrame((_s, d) => {
     if (flight.current.t < 1) {
       flight.current.t = Math.min(1, flight.current.t + d * 0.72);
@@ -241,22 +242,22 @@ function Scene({ nodes, active, setActive, focusKey }: { nodes: OrbitNode[]; act
     el('ambientLight', { key: 'ambient', intensity: 0.65 }),
     el('directionalLight', { key: 'key', position: [2.6, 3.2, 4.4], intensity: 1.6, color: '#ffe2ef' }),
     el('pointLight', { key: 'rim', position: [-3, 1.5, 2.5], intensity: 1.2, color: '#8ffff0' }),
-    h(CameraRig, { key: 'cam', active }),
+    h(CameraRig, { key: 'cam', active, focusKey }),
     h(DeepStars, { key: 'stars' }),
     el('group', { key: 'heart', rotation: sceneRot }, [
       h(StarHeart, { key: 'starheart' }),
       h(Ring, { key: 'ring1', rx: 2.6, ry: 1.35, color: '#ff93c9', opacity: 0.14, rot: [0.7, 0.1, -0.3] }),
       h(Ring, { key: 'ring2', rx: 1.8, ry: 2.4, color: '#9bfff0', opacity: 0.09, rot: [-0.8, 0.18, 0.45] }),
-      ...nodes.map(n => h(NodeMesh, { key: n.id, node: n, active: n.id === active.id, select: (node: OrbitNode) => { setActive(node); } }))
-    ]),
-    h(Pollen, { key: `pollen-${focusKey}`, active, focusKey }),
-    h(SingleRose, { key: `rose-${focusKey}`, active, focusKey })
+      ...nodes.map(n => h(NodeMesh, { key: n.id, node: n, active: focusKey > 0 && n.id === active.id, select: setActive })),
+      focusKey > 0 ? h(Pollen, { key: `pollen-${focusKey}`, active, focusKey }) : null,
+      focusKey > 0 ? h(SingleRose, { key: `rose-${focusKey}`, active, focusKey }) : null
+    ])
   ]);
 }
 
 const shell: CSSProperties = { position: 'relative', minHeight: '100vh', overflow: 'hidden', background: 'radial-gradient(circle at 50% 35%, #1b0715 0%, #07020a 46%, #020105 100%)', color: '#fff7fb', fontFamily: 'Inter, system-ui, sans-serif' };
 const overlay: CSSProperties = { position: 'absolute', inset: 0, pointerEvents: 'none' };
-const titleStyle: CSSProperties = { position: 'absolute', left: 34, top: 28, maxWidth: 420, letterSpacing: '.08em', textShadow: '0 12px 32px rgba(0,0,0,.65)' };
+const titleStyle: CSSProperties = { position: 'absolute', left: 34, top: 28, maxWidth: 430, letterSpacing: '.08em', textShadow: '0 12px 32px rgba(0,0,0,.65)' };
 const panelStyle: CSSProperties = { position: 'absolute', right: 32, bottom: 30, width: 360, padding: 22, border: '1px solid rgba(255,210,232,.22)', borderRadius: 28, background: 'linear-gradient(145deg, rgba(24,8,20,.72), rgba(8,3,13,.48))', boxShadow: '0 28px 80px rgba(0,0,0,.48)', backdropFilter: 'blur(14px)', pointerEvents: 'auto' };
 const buttonStyle: CSSProperties = { border: '1px solid rgba(255,210,232,.28)', borderRadius: 999, background: 'rgba(255,255,255,.06)', color: '#fff4fa', padding: '7px 12px', margin: '4px 5px 0 0', cursor: 'pointer' };
 
@@ -272,14 +273,14 @@ export function RomanceOrbitApp() {
       el('div', { key: 'title', style: titleStyle }, [
         el('div', { style: { fontSize: 12, opacity: .65, fontWeight: 700 } }, 'ROMANCE ORBIT · SINGLE ROSE EDITION'),
         el('div', { style: { fontSize: 52, fontWeight: 900, lineHeight: 1.02 } }, '一枝玫瑰'),
-        el('p', { style: { maxWidth: 390, color: 'rgba(255,238,248,.72)', lineHeight: 1.75 } }, '点击大光点后，光点会安静消散成花粉，镜头靠近，一枝完整玫瑰在原地生长并停住。')
+        el('p', { style: { maxWidth: 400, color: 'rgba(255,238,248,.72)', lineHeight: 1.75 } }, focusKey === 0 ? '拖动旋转这片浪漫星体。点击任意大光点，镜头会靠近它，光点在同一位置安静消散，然后生成一枝玫瑰。' : '玫瑰和被点击的大光点现在使用同一个 3D 坐标系，它会从光点原地生长，而不是跑到画面外。')
       ]),
       el('div', { key: 'panel', style: panelStyle }, [
-        el('div', { style: { fontSize: 11, color: 'rgba(255,230,245,.62)', letterSpacing: '.16em', fontWeight: 800 } }, info.kicker),
-        el('h2', { style: { margin: '8px 0 6px', fontSize: 28 } }, info.title),
-        el('p', { style: { color: 'rgba(255,239,248,.75)', lineHeight: 1.75, marginTop: 0 } }, info.text),
-        el('div', { style: { marginTop: 12 } }, info.tags.map(t => el('span', { key: t, style: { display: 'inline-block', border: '1px solid rgba(255,210,232,.2)', borderRadius: 999, padding: '5px 9px', marginRight: 7, color: 'rgba(255,240,248,.76)', fontSize: 12 } }, t))),
-        el('div', { style: { marginTop: 18 } }, nodes.map(n => el('button', { key: n.id, onClick: () => choose(n), style: { ...buttonStyle, borderColor: n.id === active.id ? n.color : 'rgba(255,210,232,.28)', background: n.id === active.id ? 'rgba(255,160,210,.17)' : 'rgba(255,255,255,.06)' } }, n.title)))
+        el('div', { style: { fontSize: 11, color: 'rgba(255,230,245,.62)', letterSpacing: '.16em', fontWeight: 800 } }, focusKey === 0 ? 'CHOOSE A LIGHT NODE' : info.kicker),
+        el('h2', { style: { margin: '8px 0 6px', fontSize: 28 } }, focusKey === 0 ? '点击一颗光点' : info.title),
+        el('p', { style: { color: 'rgba(255,239,248,.75)', lineHeight: 1.75, marginTop: 0 } }, focusKey === 0 ? '不要看右下文字，先点击主体里的大光点。它会成为玫瑰生成的位置。' : info.text),
+        el('div', { style: { marginTop: 12 } }, (focusKey === 0 ? ['镜头靠近', '原地生成', '静态玫瑰'] : info.tags).map(t => el('span', { key: t, style: { display: 'inline-block', border: '1px solid rgba(255,210,232,.2)', borderRadius: 999, padding: '5px 9px', marginRight: 7, color: 'rgba(255,240,248,.76)', fontSize: 12 } }, t))),
+        el('div', { style: { marginTop: 18 } }, nodes.map(n => el('button', { key: n.id, onClick: () => choose(n), style: { ...buttonStyle, borderColor: focusKey > 0 && n.id === active.id ? n.color : 'rgba(255,210,232,.28)', background: focusKey > 0 && n.id === active.id ? 'rgba(255,160,210,.17)' : 'rgba(255,255,255,.06)' } }, n.title)))
       ]),
       el('div', { key: 'hint', style: { position: 'absolute', left: 34, bottom: 28, color: 'rgba(255,238,248,.48)', fontSize: 13, letterSpacing: '.08em' } }, 'DRAG 旋转 · WHEEL 缩放 · CLICK 光点靠近')
     ])
