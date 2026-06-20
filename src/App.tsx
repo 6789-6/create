@@ -1,3 +1,3 @@
-import { RomanceOrbitApp } from './nocturneVow';
+import RomanceGalaxy from './RomanceGalaxy';
 
-export default RomanceOrbitApp;
+export default RomanceGalaxy;
