@@ -1,3 +1,3 @@
-import RomanceGalaxy from './RomanceGalaxy';
+import RomanceGalaxyAtlas from './RomanceGalaxyAtlas';
 
-export default RomanceGalaxy;
+export default RomanceGalaxyAtlas;
