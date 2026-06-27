@@ -13,14 +13,14 @@ export function ConnectionArcs({ active }: { active: RoseNode | null }) {
     const start = getNodePosition(activeNode);
     const targets = roseNodes
       .filter((node) => node.id !== activeNode.id && node.zoneId === activeNode.zoneId)
-      .slice(0, 6);
+      .slice(0, 5);
     const points: THREE.Vector3[] = [];
 
     targets.forEach((target) => {
       const end = getNodePosition(target);
-      const mid = start.clone().lerp(end, 0.5).normalize().multiplyScalar(1.9);
-      for (let index = 0; index <= 24; index += 1) {
-        const t = index / 24;
+      const mid = start.clone().lerp(end, 0.5).normalize().multiplyScalar(1.82);
+      for (let index = 0; index <= 20; index += 1) {
+        const t = index / 20;
         const a = start.clone().lerp(mid, t);
         const b = mid.clone().lerp(end, t);
         points.push(a.lerp(b, t));
@@ -33,7 +33,7 @@ export function ConnectionArcs({ active }: { active: RoseNode | null }) {
   return h('lineSegments', { geometry }, h('lineBasicMaterial', {
     color: '#ffc2d8',
     transparent: true,
-    opacity: active ? 0.16 : 0,
+    opacity: active ? 0.1 : 0,
     blending: THREE.AdditiveBlending
   }));
 }
