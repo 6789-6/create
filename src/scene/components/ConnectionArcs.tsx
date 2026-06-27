@@ -1,7 +1,9 @@
-import { useMemo } from 'react';
+import { createElement, useMemo } from 'react';
 import * as THREE from 'three';
 import { roseNodes, type RoseNode } from '../../data/roseNebulaData';
 import { getNodePosition } from '../utils/positions';
+
+const h = createElement;
 
 export function ConnectionArcs({ active }: { active: RoseNode | null }) {
   const activeNode = active ?? roseNodes.find((node) => node.importance === 'core') ?? null;
@@ -28,5 +30,10 @@ export function ConnectionArcs({ active }: { active: RoseNode | null }) {
     return new THREE.BufferGeometry().setFromPoints(points);
   }, [activeNode?.id]);
 
-  return <lineSegments geometry={geometry}><lineBasicMaterial color={active ? '#ffc2d8' : '#ff8bbd'} transparent opacity={active ? 0.36 : 0.18} blending={THREE.AdditiveBlending} /></lineSegments>;
+  return h('lineSegments', { geometry }, h('lineBasicMaterial', {
+    color: active ? '#ffc2d8' : '#ff8bbd',
+    transparent: true,
+    opacity: active ? 0.36 : 0.18,
+    blending: THREE.AdditiveBlending
+  }));
 }
