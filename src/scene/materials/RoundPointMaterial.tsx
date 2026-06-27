@@ -5,12 +5,12 @@ const vertexShader = `
   attribute vec3 color;
   varying vec3 vColor;
   uniform float uSize;
-  uniform float uScale;
 
   void main() {
     vColor = color;
     vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-    gl_PointSize = uSize * (uScale / max(0.8, -mvPosition.z));
+    float perspective = 1.35 / max(1.25, -mvPosition.z);
+    gl_PointSize = clamp(uSize * perspective, 1.0, uSize * 1.35);
     gl_Position = projectionMatrix * mvPosition;
   }
 `;
@@ -22,11 +22,9 @@ const fragmentShader = `
   void main() {
     vec2 center = gl_PointCoord - vec2(0.5);
     float distanceToCenter = length(center);
-    float softCircle = 1.0 - smoothstep(0.18, 0.5, distanceToCenter);
-    float core = 1.0 - smoothstep(0.0, 0.22, distanceToCenter);
-    float alpha = (softCircle * 0.72 + core * 0.28) * uOpacity;
+    float alpha = (1.0 - smoothstep(0.18, 0.5, distanceToCenter)) * uOpacity;
 
-    if (alpha < 0.012) discard;
+    if (alpha < 0.02) discard;
     gl_FragColor = vec4(vColor, alpha);
   }
 `;
@@ -35,14 +33,14 @@ export function RoundPointMaterial({ size, opacity }: { size: number; opacity: n
   const material = useMemo(() => new THREE.ShaderMaterial({
     uniforms: {
       uSize: { value: size },
-      uScale: { value: 360 },
       uOpacity: { value: opacity }
     },
     vertexShader,
     fragmentShader,
     transparent: true,
     depthWrite: false,
-    blending: THREE.AdditiveBlending
+    depthTest: true,
+    blending: THREE.NormalBlending
   }), [size, opacity]);
 
   return <primitive attach="material" object={material} />;
