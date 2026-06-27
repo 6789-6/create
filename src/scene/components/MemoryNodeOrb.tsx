@@ -7,19 +7,19 @@ export function MemoryNodeOrb(props: { node: RoseNode; active: boolean; onSelect
   const { node, active, onSelect } = props;
   const position = getNodePosition(node);
   const zone = getRoseZone(node.zoneId);
-  const size = node.importance === 'core' ? 0.08 : node.importance === 'major' ? 0.056 : 0.034;
+  const size = node.importance === 'core' ? 0.052 : node.importance === 'major' ? 0.038 : 0.025;
 
   return (
     <group position={position} onClick={(event) => { event.stopPropagation(); onSelect(); }}>
       <mesh>
-        <sphereGeometry args={[active ? size * 3.6 : size * 2, 32, 32]} />
-        <meshBasicMaterial color={zone.accent} transparent opacity={active ? 0.32 : 0.13} blending={THREE.AdditiveBlending} depthWrite={false} />
+        <sphereGeometry args={[active ? size * 3.1 : size * 1.5, 24, 24]} />
+        <meshBasicMaterial color={zone.accent} transparent opacity={active ? 0.22 : 0.055} blending={THREE.AdditiveBlending} depthWrite={false} />
       </mesh>
       <mesh>
-        <sphereGeometry args={[size, 32, 32]} />
-        <meshStandardMaterial color={zone.color} emissive={zone.accent} emissiveIntensity={active ? 2.4 : 1.1} roughness={0.24} metalness={0.08} />
+        <sphereGeometry args={[size, 24, 24]} />
+        <meshStandardMaterial color={zone.color} emissive={zone.accent} emissiveIntensity={active ? 1.35 : 0.55} roughness={0.36} metalness={0.04} />
       </mesh>
-      {active ? <Html center distanceFactor={6.5} position={[0.16, 0.11, 0]}><span className="node-label">{node.title}</span></Html> : null}
+      {active ? <Html center distanceFactor={8.2} position={[0.12, 0.08, 0]}><span className="node-label">{node.title}</span></Html> : null}
     </group>
   );
 }
