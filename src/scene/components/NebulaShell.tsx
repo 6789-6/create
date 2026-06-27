@@ -1,7 +1,9 @@
-import { useMemo } from 'react';
+import { createElement, useMemo } from 'react';
 import * as THREE from 'three';
 import { roseZones, type RoseZone } from '../../data/roseNebulaData';
 import { GLOBE_TILT } from '../utils/positions';
+
+const h = createElement;
 
 function ZoneRing({ zone }: { zone: RoseZone }) {
   const geometry = useMemo(() => {
@@ -15,7 +17,12 @@ function ZoneRing({ zone }: { zone: RoseZone }) {
     return new THREE.BufferGeometry().setFromPoints(points);
   }, [zone]);
 
-  return <line geometry={geometry}><lineBasicMaterial color={zone.accent} transparent opacity={0.24} blending={THREE.AdditiveBlending} /></line>;
+  return h('line', { geometry }, h('lineBasicMaterial', {
+    color: zone.accent,
+    transparent: true,
+    opacity: 0.24,
+    blending: THREE.AdditiveBlending
+  }));
 }
 
 export function NebulaShell() {
