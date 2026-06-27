@@ -1,11 +1,12 @@
 import { useMemo } from 'react';
 import * as THREE from 'three';
 import { roseZones } from '../../data/roseNebulaData';
+import { ROSE_SCENE } from '../roseSceneConfig';
 import { createPointGeometry } from '../utils/geometry';
 import { GLOBE_TILT } from '../utils/positions';
 
 export function RoseNebulaCloud() {
-  const geometry = useMemo(() => createPointGeometry(26000, 9101, (_index, random) => {
+  const geometry = useMemo(() => createPointGeometry(ROSE_SCENE.particles.nebulaCloud, 9101, (_index, random) => {
     const zone = roseZones[Math.floor(random() * roseZones.length)];
     const theta = random() * Math.PI * 2;
     const shell = Math.pow(random(), 0.44);
