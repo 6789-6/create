@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
 import * as THREE from 'three';
+import { ROSE_SCENE } from '../roseSceneConfig';
 import { createPointGeometry } from '../utils/geometry';
 
 export function BackgroundDust() {
-  const geometry = useMemo(() => createPointGeometry(2400, 4402, (_index, random) => {
+  const geometry = useMemo(() => createPointGeometry(ROSE_SCENE.particles.backgroundDust, 4402, (_index, random) => {
     const angle = random() * Math.PI * 2;
     const distance = 18 + random() * 36;
     const y = (random() - 0.5) * 22;
