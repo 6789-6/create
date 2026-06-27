@@ -16,9 +16,9 @@ export function RoseNebulaCloud() {
     const radius = 0.18 + shell * (zone.radius + 0.52) + wave;
     const flat = Math.sqrt(Math.max(0.22, 1 - y * y));
     const position = new THREE.Vector3(Math.cos(theta) * radius * flat, y, Math.sin(theta) * radius * 0.72 * flat).applyEuler(GLOBE_TILT);
-    const color = new THREE.Color(zone.color).lerp(new THREE.Color(zone.accent), random() * 0.55).lerp(new THREE.Color('#ffe7f0'), random() * 0.08);
+    const color = new THREE.Color(zone.color).lerp(new THREE.Color(zone.accent), random() * 0.5).lerp(new THREE.Color('#ffe7f0'), random() * 0.04);
     return { position, color };
   }), []);
 
-  return <points geometry={geometry}><RoundPointMaterial size={5.2} opacity={0.52} /></points>;
+  return <points geometry={geometry}><RoundPointMaterial size={2.2} opacity={0.34} /></points>;
 }
