@@ -1,3 +1,5 @@
-import RoseNebulaApp from './RoseNebulaApp';
+import ModularRoseNebula from './app/RoseNebulaApp';
 
-export default RoseNebulaApp;
+export default function App() {
+  return <ModularRoseNebula />;
+}
