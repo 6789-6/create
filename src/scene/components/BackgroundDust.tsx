@@ -11,9 +11,9 @@ export function BackgroundDust() {
     const y = (random() - 0.5) * 22;
     return {
       position: new THREE.Vector3(Math.cos(angle) * distance, y, Math.sin(angle) * distance),
-      color: new THREE.Color(random() > 0.55 ? '#ffd7ec' : '#b67cff').lerp(new THREE.Color('#ffffff'), random() * 0.18)
+      color: new THREE.Color(random() > 0.55 ? '#ffd7ec' : '#b67cff').lerp(new THREE.Color('#ffffff'), random() * 0.08)
     };
   }), []);
 
-  return <points geometry={geometry}><RoundPointMaterial size={7.5} opacity={0.34} /></points>;
+  return <points geometry={geometry}><RoundPointMaterial size={2.6} opacity={0.2} /></points>;
 }
