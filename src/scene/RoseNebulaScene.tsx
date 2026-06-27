@@ -25,19 +25,20 @@ function Controls({ active }: { active: RoseNode | null }) {
     }
   });
 
-  return (
-    <OrbitControls
-      ref={ref}
-      enableDamping
-      dampingFactor={controls.dampingFactor}
-      enablePan={false}
-      minDistance={controls.minDistance}
-      maxDistance={controls.maxDistance}
-    />
-  );
+  return <OrbitControls ref={ref} enableDamping dampingFactor={controls.dampingFactor} enablePan={false} minDistance={controls.minDistance} maxDistance={controls.maxDistance} />;
+}
+
+function getVisibleNodes(active: RoseNode | null) {
+  if (!active) {
+    return roseNodes.filter((node) => node.importance !== 'normal');
+  }
+
+  return roseNodes.filter((node) => node.zoneId === active.zoneId || node.id === active.id);
 }
 
 export function RoseNebulaScene({ active, onSelectNode }: { active: RoseNode | null; onSelectNode: (node: RoseNode) => void }) {
+  const visibleNodes = getVisibleNodes(active);
+
   return (
     <group>
       <ambientLight intensity={0.48} />
@@ -49,7 +50,7 @@ export function RoseNebulaScene({ active, onSelectNode }: { active: RoseNode | n
       <RoseCore />
       <NebulaShell />
       <ConnectionArcs active={active} />
-      {roseNodes.map((node) => (
+      {visibleNodes.map((node) => (
         <MemoryNodeOrb key={node.id} node={node} active={active?.id === node.id} onSelect={() => onSelectNode(node)} />
       ))}
       {active ? <LocalMemoryField node={active} /> : null}
