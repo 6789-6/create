@@ -13,7 +13,7 @@ export function PetalField() {
     const radius = 1.6 + Math.pow(random(), 0.65) * 2.3;
     const y = (random() - 0.5) * 2.8;
     const position = new THREE.Vector3(Math.cos(angle) * radius, y, Math.sin(angle) * radius * 0.74).applyEuler(GLOBE_TILT);
-    const color = new THREE.Color(random() > 0.42 ? '#ff5f9d' : '#ffc2d8').lerp(new THREE.Color('#ffe7f0'), random() * 0.15);
+    const color = new THREE.Color(random() > 0.42 ? '#ff5f9d' : '#ffc2d8');
     return { position, color };
   }), []);
 
@@ -21,5 +21,5 @@ export function PetalField() {
     if (ref.current) ref.current.rotation.y += delta * 0.018;
   });
 
-  return <points ref={ref} geometry={geometry}><RoundPointMaterial size={12} opacity={0.36} /></points>;
+  return <points ref={ref} geometry={geometry}><RoundPointMaterial size={3.8} opacity={0.22} /></points>;
 }
