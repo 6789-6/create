@@ -1,4 +1,4 @@
-export type RoseNodeType = 'memory' | 'moment' | 'place' | 'photo' | 'melody' | 'gift' | 'letter' | 'vow';
+export type RoseNodeType = 'memory' | 'moment' | 'place' | 'photo' | 'melody' | 'gift' | 'letter' | 'promise';
 
 export type RoseNodeImportance = 'core' | 'major' | 'normal';
 
