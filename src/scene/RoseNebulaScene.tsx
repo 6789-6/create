@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import { roseNodes, type RoseNode } from '../data/roseNebulaData';
+import { ROSE_SCENE } from './roseSceneConfig';
 import { BackgroundDust } from './components/BackgroundDust';
 import { CameraFocus } from './components/CameraFocus';
 import { ConnectionArcs } from './components/ConnectionArcs';
@@ -15,21 +16,33 @@ import { getNodePosition } from './utils/positions';
 
 function Controls({ active }: { active: RoseNode | null }) {
   const ref = useRef<any>(null);
+  const { controls } = ROSE_SCENE;
+
   useFrame(() => {
     if (ref.current && active) {
-      ref.current.target.lerp(getNodePosition(active), 0.08);
+      ref.current.target.lerp(getNodePosition(active), controls.focusLerp);
       ref.current.update();
     }
   });
-  return <OrbitControls ref={ref} enableDamping dampingFactor={0.08} enablePan={false} minDistance={1.45} maxDistance={7.8} />;
+
+  return (
+    <OrbitControls
+      ref={ref}
+      enableDamping
+      dampingFactor={controls.dampingFactor}
+      enablePan={false}
+      minDistance={controls.minDistance}
+      maxDistance={controls.maxDistance}
+    />
+  );
 }
 
 export function RoseNebulaScene({ active, onSelectNode }: { active: RoseNode | null; onSelectNode: (node: RoseNode) => void }) {
   return (
     <group>
       <ambientLight intensity={0.48} />
-      <pointLight position={[3, 2.2, 4]} intensity={1.3} color="#ffd1e5" />
-      <pointLight position={[-4, -1, -2]} intensity={0.8} color="#b779ff" />
+      <pointLight position={[3, 2.2, 4]} intensity={1.3} color={ROSE_SCENE.colors.roseSoft} />
+      <pointLight position={[-4, -1, -2]} intensity={0.8} color={ROSE_SCENE.colors.violet} />
       <BackgroundDust />
       <RoseNebulaCloud />
       <PetalField />
