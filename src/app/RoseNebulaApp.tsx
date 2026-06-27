@@ -2,6 +2,7 @@ import { Canvas } from '@react-three/fiber';
 import { useEffect, useState } from 'react';
 import { getRoseZone, roseNodes, roseZones, type RoseNode, type RoseZone } from '../data/roseNebulaData';
 import { RoseNebulaScene } from '../scene/RoseNebulaScene';
+import { ROSE_SCENE } from '../scene/roseSceneConfig';
 import { BottomHint } from '../ui/BottomHint';
 import { DetailCard } from '../ui/DetailCard';
 import { RoseTitle } from '../ui/RoseTitle';
@@ -42,8 +43,8 @@ export default function RoseNebulaApp() {
     <main className="rose-nebula-shell">
       <Canvas
         className="rose-canvas"
-        camera={{ position: [0, 0.35, 5.2], fov: 45 }}
-        dpr={[1, 1.65]}
+        camera={{ position: ROSE_SCENE.camera.position, fov: ROSE_SCENE.camera.fov }}
+        dpr={ROSE_SCENE.camera.dpr}
         gl={{ antialias: true, alpha: true, powerPreference: 'high-performance' }}
       >
         <RoseNebulaScene active={active} onSelectNode={setActive} />
