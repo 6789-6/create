@@ -1,3 +1,3 @@
-import RomanceGalaxyAtlas from './RomanceGalaxyAtlas';
+import RoseNebulaApp from './RoseNebulaApp';
 
-export default RomanceGalaxyAtlas;
+export default RoseNebulaApp;
