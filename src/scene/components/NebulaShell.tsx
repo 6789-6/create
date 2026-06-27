@@ -1,6 +1,7 @@
 import { createElement, useMemo } from 'react';
 import * as THREE from 'three';
 import { roseZones, type RoseZone } from '../../data/roseNebulaData';
+import { ROSE_SCENE } from '../roseSceneConfig';
 import { GLOBE_TILT } from '../utils/positions';
 
 const h = createElement;
@@ -20,7 +21,7 @@ function ZoneRing({ zone }: { zone: RoseZone }) {
   return h('line', { geometry }, h('lineBasicMaterial', {
     color: zone.accent,
     transparent: true,
-    opacity: 0.24,
+    opacity: 0.18,
     blending: THREE.AdditiveBlending
   }));
 }
@@ -29,8 +30,8 @@ export function NebulaShell() {
   return (
     <group>
       <mesh rotation={[0.1, 0.1, 0]}>
-        <sphereGeometry args={[1.85, 64, 64]} />
-        <meshBasicMaterial color="#ffb4d0" transparent opacity={0.035} wireframe blending={THREE.AdditiveBlending} />
+        <sphereGeometry args={[1.9, 48, 48]} />
+        <meshBasicMaterial color={ROSE_SCENE.colors.shell} transparent opacity={0.018} wireframe blending={THREE.AdditiveBlending} />
       </mesh>
       {roseZones.map((zone) => <ZoneRing key={zone.id} zone={zone} />)}
     </group>
