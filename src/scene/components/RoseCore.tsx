@@ -13,31 +13,31 @@ type Petal = {
 
 function createPetalGeometry() {
   const shape = new THREE.Shape();
-  shape.moveTo(0, -0.42);
-  shape.bezierCurveTo(-0.28, -0.22, -0.42, 0.22, 0, 0.52);
-  shape.bezierCurveTo(0.42, 0.22, 0.28, -0.22, 0, -0.42);
-  return new THREE.ShapeGeometry(shape, 28);
+  shape.moveTo(0, -0.28);
+  shape.bezierCurveTo(-0.2, -0.12, -0.28, 0.14, 0, 0.34);
+  shape.bezierCurveTo(0.28, 0.14, 0.2, -0.12, 0, -0.28);
+  return new THREE.ShapeGeometry(shape, 24);
 }
 
 function createPetals(): Petal[] {
   const petals: Petal[] = [];
-  const colors = ['#ff6da8', '#ff8bbd', '#ffc2d8', '#c95d92'];
+  const colors = ['#ff6da8', '#ff8bbd', '#ffb4d0', '#c95d92'];
 
-  for (let layer = 0; layer < 5; layer += 1) {
-    const count = 7 + layer * 3;
-    const radius = 0.1 + layer * 0.15;
-    const lift = layer * 0.01;
+  for (let layer = 0; layer < 4; layer += 1) {
+    const count = 6 + layer * 3;
+    const radius = 0.04 + layer * 0.085;
+    const lift = layer * 0.006;
 
     for (let index = 0; index < count; index += 1) {
-      const angle = (index / count) * Math.PI * 2 + layer * 0.46;
-      const curl = 0.58 + layer * 0.12;
+      const angle = (index / count) * Math.PI * 2 + layer * 0.42;
+      const curl = 0.35 + layer * 0.08;
       petals.push({
         id: `${layer}-${index}`,
-        position: [Math.cos(angle) * radius, lift + Math.sin(layer) * 0.012, Math.sin(angle) * radius * 0.72],
-        rotation: [1.15 + layer * 0.12, -0.34 + Math.sin(angle) * 0.28, angle + curl],
-        scale: [0.18 + layer * 0.045, 0.3 + layer * 0.07, 1],
+        position: [Math.cos(angle) * radius, lift, Math.sin(angle) * radius * 0.62],
+        rotation: [1.08 + layer * 0.09, -0.18 + Math.sin(angle) * 0.16, angle + curl],
+        scale: [0.12 + layer * 0.028, 0.2 + layer * 0.045, 1],
         color: colors[(layer + index) % colors.length],
-        opacity: 0.34 - layer * 0.025
+        opacity: 0.3 - layer * 0.026
       });
     }
   }
@@ -52,16 +52,16 @@ export function RoseCore() {
 
   useFrame((state) => {
     if (!ref.current) return;
-    const breath = 1 + Math.sin(state.clock.elapsedTime * 0.75) * 0.018;
+    const breath = 0.78 + Math.sin(state.clock.elapsedTime * 0.75) * 0.012;
     ref.current.scale.setScalar(breath);
-    ref.current.rotation.y += 0.0016;
+    ref.current.rotation.y += 0.0012;
   });
 
   return (
-    <group ref={ref} rotation={[-0.18, 0.28, 0.08]}>
+    <group ref={ref} rotation={[-0.12, 0.22, 0.06]}>
       <mesh>
-        <sphereGeometry args={[0.32, 36, 36]} />
-        <meshBasicMaterial color="#ff5f9d" transparent opacity={0.18} blending={THREE.NormalBlending} />
+        <sphereGeometry args={[0.22, 32, 32]} />
+        <meshBasicMaterial color="#ff5f9d" transparent opacity={0.14} blending={THREE.NormalBlending} />
       </mesh>
 
       {petals.map((petal) => (
@@ -71,14 +71,10 @@ export function RoseCore() {
       ))}
 
       <mesh rotation={[0.85, 0.2, 0.05]}>
-        <torusGeometry args={[0.74, 0.01, 12, 180]} />
-        <meshBasicMaterial color="#ffd1e5" transparent opacity={0.28} blending={THREE.AdditiveBlending} />
+        <torusGeometry args={[0.42, 0.006, 10, 150]} />
+        <meshBasicMaterial color="#ffd1e5" transparent opacity={0.18} blending={THREE.AdditiveBlending} />
       </mesh>
-      <mesh rotation={[1.2, -0.38, 0.4]}>
-        <torusGeometry args={[0.48, 0.008, 12, 150]} />
-        <meshBasicMaterial color="#ff8bbd" transparent opacity={0.22} blending={THREE.AdditiveBlending} />
-      </mesh>
-      <pointLight color="#ff6da8" intensity={1.05} distance={3.2} />
+      <pointLight color="#ff6da8" intensity={0.72} distance={2.5} />
     </group>
   );
 }
