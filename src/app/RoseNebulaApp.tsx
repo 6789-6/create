@@ -22,7 +22,7 @@ function IconRail({ activeZoneId, onSelectZone }: { activeZoneId?: string; onSel
 }
 
 export default function RoseNebulaApp() {
-  const [active, setActive] = useState<RoseNode | null>(roseNodes.find((node) => node.id === 'first-date-0') ?? null);
+  const [active, setActive] = useState<RoseNode | null>(null);
   const activeZone = active ? getRoseZone(active.zoneId) : null;
   const coreCount = roseNodes.filter((node) => node.importance === 'core').length;
 
