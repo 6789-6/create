@@ -1,8 +1,7 @@
-import { useMemo, useRef } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useMemo } from 'react';
 import * as THREE from 'three';
 
-type Petal = {
+type CrystalPetal = {
   id: string;
   position: [number, number, number];
   rotation: [number, number, number];
@@ -11,70 +10,101 @@ type Petal = {
   opacity: number;
 };
 
-function createPetalGeometry() {
-  const shape = new THREE.Shape();
-  shape.moveTo(0, -0.28);
-  shape.bezierCurveTo(-0.2, -0.12, -0.28, 0.14, 0, 0.34);
-  shape.bezierCurveTo(0.28, 0.14, 0.2, -0.12, 0, -0.28);
-  return new THREE.ShapeGeometry(shape, 24);
-}
+function createCrystalPetals(): CrystalPetal[] {
+  const petals: CrystalPetal[] = [];
+  const palette = ['#ff8fbd', '#ffc3da', '#f7a5c8', '#d985ae'];
+  const layers = [
+    { count: 8, radius: 0.12, scale: [0.12, 0.28, 0.08] as [number, number, number], tilt: 0.72, y: 0.025, opacity: 0.78 },
+    { count: 12, radius: 0.22, scale: [0.14, 0.34, 0.09] as [number, number, number], tilt: 0.92, y: 0.005, opacity: 0.62 },
+    { count: 16, radius: 0.32, scale: [0.16, 0.42, 0.1] as [number, number, number], tilt: 1.08, y: -0.02, opacity: 0.46 }
+  ];
 
-function createPetals(): Petal[] {
-  const petals: Petal[] = [];
-  const colors = ['#ff6da8', '#ff8bbd', '#ffb4d0', '#c95d92'];
-
-  for (let layer = 0; layer < 4; layer += 1) {
-    const count = 6 + layer * 3;
-    const radius = 0.04 + layer * 0.085;
-    const lift = layer * 0.006;
-
-    for (let index = 0; index < count; index += 1) {
-      const angle = (index / count) * Math.PI * 2 + layer * 0.42;
-      const curl = 0.35 + layer * 0.08;
+  layers.forEach((layer, layerIndex) => {
+    for (let index = 0; index < layer.count; index += 1) {
+      const angle = (index / layer.count) * Math.PI * 2 + layerIndex * 0.22;
       petals.push({
-        id: `${layer}-${index}`,
-        position: [Math.cos(angle) * radius, lift, Math.sin(angle) * radius * 0.62],
-        rotation: [1.08 + layer * 0.09, -0.18 + Math.sin(angle) * 0.16, angle + curl],
-        scale: [0.12 + layer * 0.028, 0.2 + layer * 0.045, 1],
-        color: colors[(layer + index) % colors.length],
-        opacity: 0.3 - layer * 0.026
+        id: `${layerIndex}-${index}`,
+        position: [Math.cos(angle) * layer.radius, layer.y, Math.sin(angle) * layer.radius * 0.78],
+        rotation: [layer.tilt, angle, -0.2 + Math.sin(angle) * 0.18],
+        scale: layer.scale,
+        color: palette[(index + layerIndex) % palette.length],
+        opacity: layer.opacity
       });
     }
-  }
+  });
 
   return petals;
 }
 
 export function RoseCore() {
-  const ref = useRef<THREE.Group>(null);
-  const petalGeometry = useMemo(createPetalGeometry, []);
-  const petals = useMemo(createPetals, []);
-
-  useFrame((state) => {
-    if (!ref.current) return;
-    const breath = 0.78 + Math.sin(state.clock.elapsedTime * 0.75) * 0.012;
-    ref.current.scale.setScalar(breath);
-    ref.current.rotation.y += 0.0012;
-  });
+  const petals = useMemo(createCrystalPetals, []);
 
   return (
-    <group ref={ref} rotation={[-0.12, 0.22, 0.06]}>
+    <group position={[0, 0, 0]} rotation={[-0.1, 0.18, 0.05]}>
       <mesh>
-        <sphereGeometry args={[0.22, 32, 32]} />
-        <meshBasicMaterial color="#ff5f9d" transparent opacity={0.14} blending={THREE.NormalBlending} />
+        <sphereGeometry args={[0.82, 48, 48]} />
+        <meshPhysicalMaterial
+          color="#f8c2d7"
+          roughness={0.06}
+          metalness={0.02}
+          transmission={0.88}
+          thickness={0.45}
+          transparent
+          opacity={0.1}
+          depthWrite={false}
+        />
+      </mesh>
+
+      <mesh scale={[0.88, 0.88, 0.88]}>
+        <icosahedronGeometry args={[0.72, 2]} />
+        <meshPhysicalMaterial
+          color="#ffdce8"
+          roughness={0.18}
+          metalness={0.04}
+          transmission={0.42}
+          thickness={0.2}
+          transparent
+          opacity={0.08}
+          depthWrite={false}
+        />
       </mesh>
 
       {petals.map((petal) => (
-        <mesh key={petal.id} geometry={petalGeometry} position={petal.position} rotation={petal.rotation} scale={petal.scale}>
-          <meshBasicMaterial color={petal.color} transparent opacity={petal.opacity} side={THREE.DoubleSide} depthWrite={false} blending={THREE.NormalBlending} />
+        <mesh key={petal.id} position={petal.position} rotation={petal.rotation} scale={petal.scale}>
+          <sphereGeometry args={[1, 18, 18]} />
+          <meshPhysicalMaterial
+            color={petal.color}
+            roughness={0.18}
+            metalness={0.06}
+            clearcoat={1}
+            clearcoatRoughness={0.18}
+            transmission={0.18}
+            thickness={0.12}
+            transparent
+            opacity={petal.opacity}
+          />
         </mesh>
       ))}
 
-      <mesh rotation={[0.85, 0.2, 0.05]}>
-        <torusGeometry args={[0.42, 0.006, 10, 150]} />
-        <meshBasicMaterial color="#ffd1e5" transparent opacity={0.18} blending={THREE.AdditiveBlending} />
+      <mesh>
+        <sphereGeometry args={[0.23, 32, 32]} />
+        <meshPhysicalMaterial
+          color="#ff6da8"
+          emissive="#ff4d93"
+          emissiveIntensity={0.72}
+          roughness={0.12}
+          metalness={0.08}
+          clearcoat={1}
+          clearcoatRoughness={0.1}
+        />
       </mesh>
-      <pointLight color="#ff6da8" intensity={0.72} distance={2.5} />
+
+      <mesh scale={[1, 0.74, 1]} rotation={[0.42, 0.14, -0.28]}>
+        <torusGeometry args={[0.38, 0.012, 12, 100]} />
+        <meshBasicMaterial color="#ffd6e4" transparent opacity={0.22} />
+      </mesh>
+
+      <pointLight color="#ff79ad" intensity={0.9} distance={2.8} />
     </group>
   );
 }
